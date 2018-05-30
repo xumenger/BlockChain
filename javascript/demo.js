@@ -16,6 +16,11 @@ class Block{
         this.index = index;
         this.previousHash = previousHash.toString();
         this.timestamp = timestamp;
+        /*
+         * data部分是区块所存储的信息
+         * 比特币系统中是账本信息
+         * 其他的区块链可以根据自己的需要存储自己需要的信息
+         */
         this.data = data;
         this.hash = hash.toString();
     }
