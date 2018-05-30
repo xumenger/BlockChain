@@ -13,7 +13,7 @@ class Block
         @timestamp     = Time.now
         @data          = data
         @previous_hash = previous_hash
-        @hash          = calc_hash
+        @hash          = compute_hash_with_proof_of_work
     end
 
     # 创世区块
@@ -44,15 +44,7 @@ class Block
 
     def calc_hash_with_nonce(nonce = 0)
         sha = Digest::SHA256.new
-        sha.update(nonce.to_s + @timestamp.to_s + @previous_hash + @data)
-        sha.hexdigest
-    end
-
-private
-
-    def calc_hash
-        sha = Digest::SHA256.new
-        sha.update(@timestamp.to_s + @previous_hash + @data)
+        sha.update(nonce.to_s + @index.to_s + @timestamp.to_s + @data.to_s + @previous_hash.to_s)
         sha.hexdigest
     end
 
