@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """使用Python2实现一个简单的区块链
 """
 
@@ -38,3 +40,17 @@ def next_block(last_block):
     return Block(this_index, this_timestamp, this_data, this_previous_hash)
 
 
+"""创建区块链，并添加创世区块
+"""
+blockchain = [create_genesis_block()]
+previous_block = blockchain[0]
+
+
+"""测试：往区块链中添加20个区块
+"""
+for i in range(0, 20):
+    block_to_add = next_block(previous_block)
+    blockchain.append(block_to_add)
+    previous_block = block_to_add
+    print "Block #{} has been added to the blockchain!".format(block_to_add.index)
+    print "Hash: {}\n".format(block_to_add.hash)
