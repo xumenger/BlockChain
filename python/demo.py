@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """使用Python2实现一个简单的区块链
+本例只完成了区块链的实现
+分布式系统、区块链同步……的功能未实现
+JavaScript版本将如上完整功能实现
 """
 
 import hashlib as hasher
