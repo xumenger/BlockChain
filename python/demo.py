@@ -4,6 +4,8 @@
 本例只完成了区块链的实现
 分布式系统、区块链同步……的功能未实现
 JavaScript版本将如上完整功能实现
+
+python2 demo.py 即可运行程序
 """
 
 import hashlib as hasher
