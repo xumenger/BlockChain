@@ -22,7 +22,15 @@ class Block{
 }
 
 
+/*
+ * 存储自己作为P2P服务端收到的所有P2P连接
+ */
 var sockets = [];
+
+
+/*
+ * 消息类型
+ */
 var MessageType = {
     QUERY_LATEST: 0,
     QUERY_ALL: 1,
@@ -69,6 +77,11 @@ var initHttpServer = () => {
 
 var initP2PServer = () => {
     var server = new WebSocket.Server({port: p2p_port});
+    /*
+     * 注册收到P2P连接后的回调函数
+     * 将连接的ws放到sockets中！
+     * 供boastcast函数广播使用
+     */
     server.on("connection", ws => initConnection(ws));
     console.log("listening websocket p2p port on: " + p2p_port); 
 };
@@ -88,9 +101,28 @@ var initMessageHandler = (ws) => {
         console.log("Received message" + JSON.stringify(message));
         switch(message.type){
             case MessageType.QUERY_LATEST:
+
+                /*
+                    收到其他节点查询最后一个区块的请求
+                    发送本地的最后一个区块信息
+
+                    var responseLatestMsg = () => ({
+                        "type": MessageType.RESPONSE_BLOCKCHAIN,
+                        "data": JSON.stringify([getLatestBlock()])
+                    });
+                */
                 write(ws, responseLatestMsg());
                 break;
             case MessageType.QUERY_ALL:
+                /*
+                    收到其他节点查询到全部区块链的请求
+                    发送自己本地所有的区块链信息
+
+                    var responseChainMsg = () => ({
+                        "type": MessageType.RESPONSE_BLOCKCHAIN, 
+                        "data": JSON.stringify(blockchain);
+                    });
+                */
                 write(ws, responseChainMsg());
                 break;
             case MessageType.RESPONSE_BLOCKCHAIN:
@@ -138,6 +170,9 @@ var calculateHash = (index, previousHash, timestamp, data) => {
 };
 
 
+/*
+ * 往本地区块链中添加新的区块
+ */
 var addBlock = (newBlock) => {
     if(isValidNewBlock(newBlock, getLatestBlock())){
         blockchain.push(newBlock);
@@ -168,6 +203,9 @@ var isValidNewBlock = (newBlock, previousBlock) =>{
 };
 
 
+/*
+ * 连接到区块链分布式网络上的所有P2P节点
+ */
 var connectToPeers = (newPeers) => {
     newPeers.forEach((peer) => {
         var ws = new WebSocket(peer);
@@ -179,12 +217,22 @@ var connectToPeers = (newPeers) => {
 };
 
 
+/*
+ * 收到`MessageType.RESPONSE_BLOCKCHAIN`请求消息后的处理函数
+ */
 var handleBlockchainResponse = (message) => {
+    // 解析消息，请求消息中是将整个区块链打包，为了顺序需要按照index排序
     var receivedBlocks = JSON.parse(message.data).sort((b1, b2) => (b1.index - b2.index));
+    // 获取请求消息区块链中的最后一个区块
     var latestBlockReceived = receivedBlocks[receivedBlocks.length - 1];
+    // 获取本地的最后一个区块
     var latestBlockHeld = getLatestBlock();
+    /*
+     * 如果请求区块链的最后一个区块的index大于本地区块链的最后一个区块的index
+     * 说明需要更新本地区块
+     */
     if(latestBlockReceived.index > latestBlockHeld.index){
-        console.log("blockchain possibly behind. We got: " + latestBlockHeld.index + " Peer got: " + latestBlockReceived.index);  
+        console.log("blockchain possibly behind. We got: " + latestBlockHeld.index + " Peer got: " + latestBlockReceived.index); 
         if(latestBlockHeld.hash === latestBlockReceived.previousHash){
             console.log("We can append the received block to our chain");
             blockchain.push(latestBlockReceived);
@@ -207,9 +255,9 @@ var handleBlockchainResponse = (message) => {
 
 /*
  * 选择链最长的
- * 在电路块的顺序必须被明确指定，但是在发生冲突的情况下
+ * 在区块链的顺序必须被明确指定，但是在发生冲突的情况下
  * 例如，两个节点同时在同一生成的块和相同数量
- * 我们选择电路，其中包含的块数量较多
+ * 我们选择区块链，其中包含的块数量较多
  */
 var replaceChain = (newBlocks) => {
     if(isValidChain(newBlocks) && newBlocks.length > blockchain.length){
@@ -223,10 +271,16 @@ var replaceChain = (newBlocks) => {
 };
 
 
+/*
+ * 判断当前的区块链是不是一个合法的区块链
+ */
 var isValidChain = (blockchainToValidate) => {
+    // 判断blockchainToValidate的第一个区块是不是“创世纪”区块
     if(JSON.stringify(blockchainToValidate[0]) !== JSON.stringify(getGenesisBlock())){
         return false;
     }
+
+    // 逐个判断每个区块是否合法
     var tempBlocks = [blockchainToValidate[0]];
     for(var i=1; i<blockchainToValidate.length; i++){
         if(isValidNewBlock(blockchainToValidate[i], tempBlocks[i-1])){
@@ -240,6 +294,9 @@ var isValidChain = (blockchainToValidate) => {
 };
 
 
+/*
+ * 获取区块链中的最后一个区块
+ */
 var getLatestBlock = () => blockchain[blockchain.length - 1];
 
 
@@ -249,24 +306,44 @@ var queryChainLengthMsg = () => ({"type": MessageType.QUERY_LATEST});
 var queryAllMsg = () => ({"type": MessageType.QUERY_ALL});
 
 
+/*
+ * 生成获取完整区块的请求消息
+ */
 var responseChainMsg = () => ({
     "type": MessageType.RESPONSE_BLOCKCHAIN, 
     "data": JSON.stringify(blockchain);
 });
 
 
+/*
+ * 生成获取最后一个区块的请求消息
+ */
 var responseLatestMsg = () => ({
     "type": MessageType.RESPONSE_BLOCKCHAIN,
     "data": JSON.stringify([getLatestBlock()])
 });
 
 
+/*
+ * 使用websocket发送消息
+ */
 var write = (ws, message) => ws.send(JSON.stringify(message));
 
 
+/*
+ * 使用WebSocket广播消息
+ * 也就是向sockets中的每个对象发送消息
+ */
 var broadcast = (message) => sockets.forEach(socket => write(socket, message));
 
 
+
+// 连接到所有的P2P节点
 connectToPeers(initialPeers);
+// 作为HTTP服务器启动
 initHttpServer();
+// 作为P2P服务器启动
 initP2PServer();
+/*
+ * 特别说明一下P2P架构，每个节点既是P2P客户端，又是P2P服务端
+ */
