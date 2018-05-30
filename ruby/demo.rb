@@ -25,6 +25,29 @@ class Block
         Block.new(data, previous.hash)
     end
 
+    # 添加工作累证明算法的实现
+    # 在经典的区块链中，你必须通过计算得到00开头的哈希作为块的标识符
+    # 前缀的00越多，计算了就越大，也就越困难
+    # 出于简单考虑，我们将难度设定为两个前缀0
+    # 也就是 2^16 = 256 种可能
+    def compute_hash_with_proof_of_work(difficulty = "00")
+        nonce = 0
+        loop do
+            hash = calc_hash_with_nonce(nonce)
+            if hash.start_with?(difficulty)
+                return [nonce, hash]
+            else
+                nonce += 1
+            end
+        end
+    end
+
+    def calc_hash_with_nonce(nonce = 0)
+        sha = Digest::SHA256.new
+        sha.update(nonce.to_s + @timestamp.to_s + @previous_hash + @data)
+        sha.hexdigest
+    end
+
 private
 
     def calc_hash
@@ -49,5 +72,5 @@ b3 = Block.next( b2, "More Transaction Data..." )
 # 在上面的实现中，调用`calc_hash`方法计算块的标识符时，需要传入前一个块的签名，就是这个意思
 blockchain = [b0, b1, b2, b3]
 
-pp blockchain
+p blockchain
 
